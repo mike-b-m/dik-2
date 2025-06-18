@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+:root {
+  --color-clo: #6FE6FC
+}
+
+.bg-clo {
+  background-color: var(--color-clo);
+}
