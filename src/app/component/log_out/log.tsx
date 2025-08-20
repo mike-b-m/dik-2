@@ -8,7 +8,9 @@ export default function Log(){
           window.location.href = "/component/login"
           }
     return (
-        <button onClick={handleLog_out}
-        className="shadow-2xl focus: hover:text-sky-400">dekonekte</button>
+        <div>
+         <button onClick={handleLog_out}
+        className="shadow-2xl focus: hover:text-sky-400 pr-3">dekonekte</button>   
+        </div>
     )
 }

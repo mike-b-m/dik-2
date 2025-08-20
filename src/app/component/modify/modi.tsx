@@ -24,7 +24,7 @@ export default function Modi({mo, de, si, ant, di}:{mo:any, de:any, si:any, ant:
         <> 
         <form onSubmit={dab} className=" ">
             Mo<input type="text" value={word} 
-            className="block shadow-sm" onChange={(e)=>setWord(e.target.value)}/>
+            className="block shadow-sm" placeholder="mo" onChange={(e)=>setWord(e.target.value)}/>
 
             Definisyon <textarea  value={def} onChange={(e)=>setDef(e.target.value)} 
             className="w-90 h-45 block shadow-sm" />
