@@ -33,7 +33,7 @@ export default function Nav(){
                         
                 </div>
                 <Log/>                
-            </div> : <Login/>}
+            </div> : <></>}
             </>
            
     )

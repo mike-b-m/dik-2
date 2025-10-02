@@ -9,7 +9,7 @@ export default function Home() {
     const [add, setAdd] = useState(true)  
   useEffect(() => {
     const getUser = async () => {
-      const { data} = await supabase.auth.getUser();
+      const {data} = await supabase.auth.getUser();
       const use:any = data?.user
       setUser(use);
     };
@@ -24,7 +24,7 @@ export default function Home() {
         <a href={`/component/add`} className="hover:text-blue-500 cursor-pointer ml-12">
                 </a>
                 <button>Ajoute mo a</button>
-                {add ? <div className=""> <Add/> </div> : <div>null</div> }
+                :{add ? <div className=""> <Add/> </div> : <div>null</div> }
         
     </div> : null}     
     </>

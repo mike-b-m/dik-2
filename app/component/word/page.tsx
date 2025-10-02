@@ -61,11 +61,8 @@ export default function Words() {
           </li>
         ))}
       </ul>
-    )}
-    
+    )} 
   </div>
-           
-     
         </div>
     </>
     )
