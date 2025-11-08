@@ -16,54 +16,76 @@ export default function Words() {
   const [loding, setLoding] = useState(true)
   const [name, setName] = useState("bon")
   
-        useEffect(()=> { const dab = async ()=>{
-        const { data, error } = await supabase.from('words').select('*')
-        if (error) console.error(error)
-        else setWo(data)
-        setLoding(false)  
-        }
-        dab()
-        }, [])
+  const fetchWords = async () => {
+    const { data, error } = await supabase.from('words').select('*')
+    if (error) console.error(error)
+    else setWo(data)
+    setLoding(false)
+  }
+
+  useEffect(()=> { 
+    fetchWords()
+  }, [])
          
 
-        const n = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
-        const fil= wo.filter(wd =>wd.word === n)
+  const n = name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
+  const fil= wo.filter(wd =>wd.word === n)
+
+  const handleDelete = () => {
+    fetchWords() // Refresh the list after deletion
+    setName("bon") // Reset selection
+  }
 
     
 
     return(
-        <>
-        <div className='grid grid-cols-2 '>
+      <div className='min-h-screen bg-white'>
+        <div className='max-w-7xl mx-auto px-4 py-8'>
+          <h1 className="text-3xl md:text-4xl font-bold mb-8 text-center">Diksyone Kreyòl</h1>
+          
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
+            {/* Words List */}
+            <div className="border border-gray-200 p-6">
+              <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-200">
+                Mo Disponib
+              </h2>
+              <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
+                {wo.map((user) => (
+                  <li key={user.id}>
+                    <button 
+                      onClick={e => setName(user.word)}
+                      className="w-full text-left px-3 py-2 hover:bg-black hover:text-white transition-colors duration-200 border border-transparent hover:border-black"
+                    >
+                      {user.word}
+                    </button> 
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-         <div className="">
-    <h1 className="bg-clo font-bold m-2 lg:ml-15  lg:mt-6 pl-2">Mo disponib:</h1>
-    <ul className="lg:ml-16 lg:columns-5  columns-2 ">
-        {wo.map((user) => (
-        <li key={user.id}>
-          <button onClick={e =>setName(user.word)}>
-          {user.word}
-          </button> 
-        </li>
-        ))}
-      </ul></div>
-
-       <div className='object-left ' style={{ padding: 20 }}>
-    
-    {loding ? (
-      <p>Loding...</p>
-    ) : (
-      <ul className=" md:pl-10 md:text-lg text-sm">
-        {fil.map((user:any) => (
-          <li key={user.id}>
-            
-            <Modi mo={user.word} de={user.def} si={user.sino} ant={user.kont} di={user.id} />
-
-          </li>
-        ))}
-      </ul>
-    )} 
-  </div>
+            {/* Word Details */}
+            <div className='border border-gray-200 p-6'>
+              <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-200">
+                Detay Mo
+              </h2>
+              {loding ? (
+                <p className="text-center text-gray-600">Chaje...</p>
+              ) : (
+                <div>
+                  {fil.length > 0 ? (
+                    fil.map((user:any) => (
+                      <div key={user.id}>
+                        <Modi mo={user.word} de={user.def} si={user.sino} ant={user.kont} di={user.id} onDelete={handleDelete} />
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-600">Chwazi yon mo pou wè detay li</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-    </>
+      </div>
     )
 }
