@@ -1,9 +1,30 @@
 @import 'tailwindcss';
 
 :root {
-  --color-clo: #6FE6FC
+  --color-primary: #000000;
+  --color-secondary: #ffffff;
+  --color-gray: #f5f5f5;
+  --color-border: #e5e5e5;
 }
 
-.bg-clo {
-  background-color: var(--color-clo);
+body {
+  background-color: var(--color-secondary);
+  color: var(--color-primary);
+}
+
+/* Minimal black and white utilities */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-secondary {
+  background-color: var(--color-secondary);
+}
+
+.bg-gray-light {
+  background-color: var(--color-gray);
+}
+
+.border-minimal {
+  border: 1px solid var(--color-border);
 }

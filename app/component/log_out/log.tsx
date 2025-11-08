@@ -9,8 +9,12 @@ export default function Log(){
           }
     return (
         <div>
-         <button onClick={handleLog_out}
-        className="shadow-2xl focus: hover:text-sky-400 pr-3">dekonekte</button>   
+         <button 
+            onClick={handleLog_out}
+            className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 border border-black hover:bg-black hover:text-white transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg whitespace-nowrap"
+         >
+            Dekonekte
+         </button>   
         </div>
     )
 }
