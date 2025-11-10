@@ -17,25 +17,9 @@ export default function AllWords() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingWordId, setEditingWordId] = useState<number | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [displayCount, setDisplayCount] = useState(20) // Start with 20 words
 
-  const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-      
-      setIsAdmin(!!adminData)
-    }
-  }
-
   const fetchWords = async () => {
-    await checkAdminStatus()
-    
     // Fetch only approved words - everyone sees the same approved words
     const { data, error } = await supabase
       .from('words')
@@ -53,7 +37,11 @@ export default function AllWords() {
 
   useEffect(() => {
     fetchWords()
-  }, [])
+  }, [fetchWords])
+
+  const filteredWords = words.filter(word => 
+    word.word && word.word.trim() !== "" && word.word.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   // Infinite scroll handler
   useEffect(() => {
@@ -66,21 +54,12 @@ export default function AllWords() {
 
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [words, searchTerm]) // Re-attach when words or search changes
-
-  const filteredWords = words.filter(word => 
-    word.word && word.word.trim() !== "" && word.word.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  }, [filteredWords.length]) // Re-attach when filtered words length changes
 
   // Only display a subset based on displayCount
   const displayedWords = filteredWords.slice(0, displayCount)
 
   const handleDelete = () => {
-    fetchWords()
-    setEditingWordId(null)
-  }
-
-  const handleSave = () => {
     fetchWords()
     setEditingWordId(null)
   }

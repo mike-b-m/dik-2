@@ -1,7 +1,16 @@
 import { useState, useEffect} from "react";
 import { supabase } from "../db";
 
-export default function Modi({mo, de, si, ant, di, onDelete}:{mo:any, de:any, si:any, ant:any, di:any, onDelete?: () => void}){
+type ModiProps = {
+  mo: string
+  de: string
+  si: string
+  ant: string
+  di: number
+  onDelete?: () => void
+}
+
+export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
    const [word, setWord]=useState("")
    const [def, setDef] = useState("")
    const [sino, setSino] = useState("")
@@ -34,7 +43,7 @@ export default function Modi({mo, de, si, ant, di, onDelete}:{mo:any, de:any, si
     }
   }
 
-   const handlePreview = (e:any) => {
+   const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       setShowPreview(true)
    }
@@ -44,7 +53,7 @@ export default function Modi({mo, de, si, ant, di, onDelete}:{mo:any, de:any, si
    }
 
    const dab = async ()=>{
-      const { data, error } = await supabase.from('words').update({word, def,sino,kont}).eq('id',di).select("*")
+      const { error } = await supabase.from('words').update({word, def,sino,kont}).eq('id',di).select("*")
       if (error) console.error(error) 
       else {
         setSaved(true)
@@ -210,7 +219,7 @@ export default function Modi({mo, de, si, ant, di, onDelete}:{mo:any, de:any, si
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
               <div className="bg-white border-2 border-black p-4 sm:p-5 md:p-6 max-w-[90%] sm:max-w-md w-full">
                 <h3 className="text-base sm:text-lg md:text-xl font-bold mb-3 sm:mb-4">Konfime Efasman</h3>
-                <p className="mb-4 sm:mb-5 text-xs sm:text-sm md:text-base">Èske ou sèten ou vle efase mo "{word}"? Aksyon sa a pa ka defèt.</p>
+                <p className="mb-4 sm:mb-5 text-xs sm:text-sm md:text-base">Èske ou sèten ou vle efase mo &ldquo;{word}&rdquo;? Aksyon sa a pa ka defèt.</p>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={handleDelete}

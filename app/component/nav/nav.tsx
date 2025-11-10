@@ -3,17 +3,20 @@ import Handler from "../ap/api";
 import { useEffect, useState } from "react";
 import { supabase } from "../db";
 import Log from "../log_out/log";
-import Login from "../login/page";
 
+type User = {
+  user_metadata: {
+    full_name: string
+  }
+}
 
 export default function Nav(){
-    const [user, setUser] = useState<any>()  
+    const [user, setUser] = useState<User | null>(null)  
       
       useEffect(() => {
         const getUser = async () => {
           const { data} = await supabase.auth.getUser();
-          const use:any = data?.user
-          setUser(use);
+          setUser(data?.user as User | null);
         };
     
         getUser();
