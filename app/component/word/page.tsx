@@ -3,7 +3,7 @@ import {supabase} from '../db'
 import { useState, useEffect } from 'react'
 import Modi from '../modify/modi'
 
-type user ={
+type Word ={
   id: number
   word: string
   def: string
@@ -12,7 +12,7 @@ type user ={
 
 }
 export default function Words() {
-  const [wo, setWo] =useState<user[]>([])
+  const [wo, setWo] =useState<Word[]>([])
   const [loding, setLoding] = useState(true)
   const [name, setName] = useState("bon")
   
@@ -50,13 +50,13 @@ export default function Words() {
                 Mo Disponib
               </h2>
               <ul className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2">
-                {wo.map((user) => (
-                  <li key={user.id}>
+                {wo.map((word) => (
+                  <li key={word.id}>
                     <button 
-                      onClick={e => setName(user.word)}
+                      onClick={() => setName(word.word)}
                       className="w-full text-left px-3 py-2 hover:bg-black hover:text-white transition-colors duration-200 border border-transparent hover:border-black"
                     >
-                      {user.word}
+                      {word.word}
                     </button> 
                   </li>
                 ))}
@@ -73,9 +73,9 @@ export default function Words() {
               ) : (
                 <div>
                   {fil.length > 0 ? (
-                    fil.map((user:any) => (
-                      <div key={user.id}>
-                        <Modi mo={user.word} de={user.def} si={user.sino} ant={user.kont} di={user.id} onDelete={handleDelete} />
+                    fil.map((word) => (
+                      <div key={word.id}>
+                        <Modi mo={word.word} de={word.def} si={word.sino} ant={word.kont} di={word.id} onDelete={handleDelete} />
                       </div>
                     ))
                   ) : (

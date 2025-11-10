@@ -28,7 +28,7 @@ export default function Add(){
     }
   }
 
-   const handlePreview = (e:any) => {
+   const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setShowPreview(true)
    }

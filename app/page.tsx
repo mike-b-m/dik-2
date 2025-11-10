@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "./component/db";
 import Add from "./component/add/page";
 
+type User = {
+  id: string
+}
+
 export default function Home() {
-    const [user, setUser] = useState<any>()
-    const [add, setAdd] = useState(true)  
+    const [user, setUser] = useState<User | null>(null)
   useEffect(() => {
     const getUser = async () => {
       const {data} = await supabase.auth.getUser();
-      const use:any = data?.user
-      setUser(use);
+      setUser(data?.user as User | null);
     };
 
     getUser();
@@ -23,7 +25,7 @@ export default function Home() {
           <div className="text-center mb-4 sm:mb-6 md:mb-8">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4">Ajoute Nouvo Mo</h1>
           </div>
-          {add && <Add />}
+          <Add />
         </div>
       ) : (
         <div className="flex items-center justify-center min-h-[80vh] px-3 sm:px-4 md:px-6 lg:px-8">

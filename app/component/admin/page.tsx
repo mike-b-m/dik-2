@@ -39,10 +39,6 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
-  useEffect(() => {
-    checkAdminAccess()
-  }, [])
-
   const checkAdminAccess = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -83,6 +79,10 @@ export default function AdminDashboard() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    checkAdminAccess()
+  }, [checkAdminAccess])
 
   const fetchPendingWords = async () => {
     setLoadingWords(true)
