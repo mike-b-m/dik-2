@@ -4,17 +4,25 @@ import { supabase } from "../db";
 type ModiProps = {
   mo: string
   de: string
-  si: string
-  ant: string
+  si: string[]
+  ant: string[]
   di: number
+  et: string
+  ex: string[]
+  na: string
+  ap: string
   onDelete?: () => void
 }
 
-export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
+export default function Modi({mo, de, si, ant, di, et, ex, na, ap, onDelete}: ModiProps){
    const [word, setWord]=useState("")
    const [def, setDef] = useState("")
-   const [sino, setSino] = useState("")
-   const [kont, setKont] = useState("")
+   const [sino, setSino] = useState<string[]>([])
+   const [kont, setKont] = useState<string[]>([])
+   const [etymology, setEtimology] = useState("")
+   const [exemple, setExemple] = useState<string[]>([])
+   const [nature, setNature] = useState("")
+   const [api, setApi] = useState("")
    const [saved, setSaved] = useState(false)
    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
    const [showPreview, setShowPreview] = useState(false)
@@ -27,8 +35,12 @@ export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
     setDef(de)
     setSino(si)
     setKont(ant)
+    setEtimology(et)
+    setExemple(ex)
+    setNature(na)
+    setApi(ap)
     checkAdminStatus()
-   },[mo, de, si, ant])
+   },[mo, de, JSON.stringify(si), JSON.stringify(ant), et, JSON.stringify(ant), na, ap])
 
    const checkAdminStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -43,6 +55,53 @@ export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
     }
   }
 
+  // for handle synonime
+   const handleListSynonym = (index: number, field: string, value: string) => {
+    const newRows = [...sino]
+    newRows[index] = value 
+    setSino(newRows)
+
+  }
+  const addRow = () => {
+    setSino([...sino, ''])
+  }
+  const removeRow = (index: number) => {
+    if (sino.length > 1) {
+      setSino(sino.filter((_, i) => i !== index))
+    }
+  }
+   // for handle antonim
+   const handleListKont = (index: number, field: string, value: string) => {
+    const newRows = [...kont]
+    newRows[index] = value 
+    setKont(newRows)
+
+  }
+  const addkont = () => {
+    setKont([...kont, ''])
+  }
+  const removeKont = (index: number) => {
+    if (kont.length > 1) {
+      setKont(kont.filter((_, i) => i !== index))
+    }
+  }
+
+  // for handle exenple
+   const handleListExemple = (index: number, field: string, value: string) => {
+    const newRows = [...exemple]
+    newRows[index] = value 
+    setExemple(newRows)
+
+  }
+  const addExemple = () => {
+    setExemple([...exemple, ''])
+  }
+  const removeExemple = (index: number) => {
+    if (exemple.length > 1) {
+      setExemple(exemple.filter((_, i) => i !== index))
+    }
+  }
+
    const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault()
       setShowPreview(true)
@@ -53,7 +112,7 @@ export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
    }
 
    const dab = async ()=>{
-      const { error } = await supabase.from('words').update({word, def,sino,kont}).eq('id',di).select("*")
+      const { error } = await supabase.from('words').update({word, def,sino,kont,etymology,exemple,nature,api}).eq('id',di).select("*")
       if (error) console.error(error) 
       else {
         setSaved(true)
@@ -117,6 +176,16 @@ export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
               </div>
 
               <div>
+                <label className="block text-sm font-semibold mb-1">Etimoloji</label>
+                <textarea  
+                  value={etymology} 
+                  onChange={(e)=>setEtimology(e.target.value)} 
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm" 
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-semibold mb-1">Definisyon</label>
                 <textarea  
                   value={def} 
@@ -126,24 +195,121 @@ export default function Modi({mo, de, si, ant, di, onDelete}: ModiProps){
                 />
               </div>
 
+              {/* sinonim section */}
               <div>
-                <label className="block text-sm font-semibold mb-1">Sinonim</label>
-                <textarea  
-                  value={sino} 
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm" 
-                  onChange={(e)=>setSino(e.target.value)}
-                />
+                <div>
+                  <label className="font-semibold mb-1 mr-5">Sinonim {sino.length}</label>
+                  <button 
+                    type="button" 
+                    onClick={addRow}
+                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 mb-2 text-sm transition-colors duration-200"
+                  >
+                    Ajoute Sinonim
+                  </button>
+                </div>
+                {sino.map((syn, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <div>
+                      {sino.length > 1 && (
+                        <button 
+                          type="button"
+                          onClick={() => removeRow(index)}
+                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
+                        >
+                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                      )}
+                    </div>
+                    <label className="block text-sm font-semibold mb-1">Sinonim</label>
+                    <input
+                      type="text"
+                      placeholder="Sinonim"
+                      value={syn}
+                      onChange={(e) => handleListSynonym(index, 'sino', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* antonim section */}
+              <div>
+                <div>
+                  <label className="font-semibold mb-1 mr-5">Antonim {kont.length}</label>
+                  <button 
+                    type="button" 
+                    onClick={addkont}
+                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
+                  >
+                    Ajoute Antonim
+                  </button>
+                </div>
+                {kont.map((ant, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <div>
+                      {kont.length > 1 && (
+                        <button 
+                          type="button"
+                          onClick={() => removeKont(index)}
+                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
+                        >
+                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                      )}
+                    </div>
+                    <label className="block text-sm font-semibold mb-1">Antonim</label>
+                    <input
+                      type="text"
+                      placeholder="Antonim"
+                      value={ant}
+                      onChange={(e) => handleListKont(index, 'kont', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
+                    />
+                  </div>
+                ))}
               </div>
 
+              {/* exemple section */}
               <div>
-                <label className="block text-sm font-semibold mb-1">Antonim</label>
-                <textarea 
-                  value={kont} 
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm"
-                  onChange={(e)=>setKont(e.target.value)} 
-                />
+                <div>
+                  <label className="font-semibold mb-1 mr-5">Examp {kont.length}</label>
+                  <button 
+                    type="button" 
+                    onClick={addExemple}
+                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
+                  >
+                    Ajoute Examp
+                  </button>
+                </div>
+                {exemple.map((ex, index) => (
+                  <div key={index} className="flex items-center gap-2 mb-2">
+                    <div>
+                      {exemple.length > 1 && (
+                        <button 
+                          type="button"
+                          onClick={() => removeExemple(index)}
+                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
+                        >
+                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                      )}
+                    </div>
+                    <label className="block text-sm font-semibold mb-1">Examp</label>
+                    <input
+                      type="text"
+                      placeholder="Examp"
+                      value={ex}
+                      onChange={(e) => handleListExemple(index, 'exemple', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
+                    />
+                  </div>
+                ))}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-1.5">

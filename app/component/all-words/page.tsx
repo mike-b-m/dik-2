@@ -7,9 +7,13 @@ type Word = {
   id: number
   word: string
   def: string
-  sino: string
-  kont: string
+  sino: string[]
+  kont: string[]
   approved: boolean
+  etymology: string
+  exemple: string[]
+  nature: string
+  api: string
 }
 
 export default function AllWords() {
@@ -24,7 +28,7 @@ export default function AllWords() {
     const { data, error } = await supabase
       .from('words')
       .select('*')
-      .eq('approved', true)
+      //.eq('approved', true)
       .order('word', { ascending: true })
     
     if (error) {
@@ -125,7 +129,11 @@ export default function AllWords() {
                         mo={word.word} 
                         de={word.def} 
                         si={word.sino} 
-                        ant={word.kont} 
+                        ant={word.kont}
+                        et={word.etymology}
+                        ex={word.exemple}
+                        na={word.nature}
+                        ap={word.api} 
                         di={word.id} 
                         onDelete={handleDelete}
                       />
