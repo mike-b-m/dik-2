@@ -7,8 +7,12 @@ type Word ={
   id: number
   word: string
   def: string
-  sino: string
-  kont: string
+  sino: string[]
+  kont: string[]
+  exemple: string[]
+  nature: string
+  api: string
+
 
 }
 export default function Words() {
@@ -75,7 +79,9 @@ export default function Words() {
                   {fil.length > 0 ? (
                     fil.map((word) => (
                       <div key={word.id}>
-                        <Modi mo={word.word} de={word.def} si={word.sino} ant={word.kont} di={word.id} onDelete={handleDelete} />
+                        <Modi mo={word.word} de={word.def} si={word.sino} ant={word.kont} di={word.id} et='' ex={word.exemple}
+                        na={word.nature}
+                        ap={word.api} onDelete={handleDelete} />
                       </div>
                     ))
                   ) : (
