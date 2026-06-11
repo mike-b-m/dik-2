@@ -10,40 +10,47 @@ type User = {
   }
 }
 
-export default function Nav(){
-    const [user, setUser] = useState<User | null>(null)  
-      
-      useEffect(() => {
-        const getUser = async () => {
-          const { data} = await supabase.auth.getUser();
-          setUser(data?.user as User | null);
-        };
-    
-        getUser();
-      }, []);
+export default function Nav() {
+  const [user, setUser] = useState<User | null>(null)
 
-    return(
-        <>
-        {user && (
-          <nav className="border-b border-gray-200 bg-white sticky top-0 z-40">
-            <div className="max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-              <div className="flex justify-between items-center h-14 sm:h-16 lg:h-18">
-                {/* Left section - Navigation Links */}
-                <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-6 lg:space-x-8 flex-1">
-                  <Handler/>
-                </div>
-                
-                {/* Right section - User Info & Logout */}
-                <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 lg:space-x-6">
-                  <span className="text-xs sm:text-sm md:text-base lg:text-lg truncate max-w-[100px] sm:max-w-[150px] md:max-w-[200px] lg:max-w-none">
-                    Hi! {user?.user_metadata.full_name}
-                  </span>
-                  <Log/>
-                </div>
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user as User | null);
+    };
+    getUser();
+  }, []);
+
+  return (
+    <>
+      {user && (
+        <nav className="border-b border-mist bg-paper/90 backdrop-blur sticky top-0 z-40">
+          <div className="max-w-5xl mx-auto px-3 sm:px-6">
+            <div className="flex flex-wrap justify-between items-center min-h-14 sm:min-h-16 py-2 gap-x-3 gap-y-1.5">
+              <a href="/" className="flex items-center gap-2 shrink-0 whitespace-nowrap" title="Akèy">
+                <span className="flex flex-col gap-[3px]" aria-hidden="true">
+                  <span className="w-5 h-[7px] rounded-sm bg-blueht" />
+                  <span className="w-5 h-[7px] rounded-sm bg-redht" />
+                </span>
+                <span className="font-display font-bold text-base sm:text-lg tracking-tight hidden md:inline">
+                  Diksyonè Kreyòl
+                </span>
+              </a>
+
+              <div className="flex items-center gap-2 sm:gap-3 order-2 md:order-3 shrink-0">
+                <span className="hidden sm:inline text-sm text-ink-soft truncate max-w-[180px]">
+                  {user?.user_metadata.full_name}
+                </span>
+                <Log />
+              </div>
+
+              <div className="order-3 md:order-2 mx-auto md:mx-0">
+                <Handler />
               </div>
             </div>
-          </nav>
-        )}
-        </>
-    )
+          </div>
+        </nav>
+      )}
+    </>
+  )
 }

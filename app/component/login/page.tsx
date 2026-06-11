@@ -1,34 +1,45 @@
 "use client"
 import { supabase } from "../db"
- export default function Login(){
-   const handlelogin= async () => {
-        await supabase.auth.signInWithOAuth({
-            provider: "google",
-        })
-    }
-    return(
-      <div className="min-h-screen flex items-center justify-center px-3 sm:px-4 md:px-6 lg:px-8 bg-white">
-        <div className="w-full max-w-[90%] sm:max-w-md md:max-w-lg">
-          <div className="text-center mb-6 sm:mb-8 md:mb-10">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 sm:mb-4">Diksyone Kreyòl</h1>
-            <h2 className="text-lg sm:text-xl md:text-2xl mb-2 sm:mb-3">Konekte</h2>
-            <p className="text-xs sm:text-sm md:text-base text-gray-600">Konekte pou aksede diksyone a</p>
-          </div>
-          
-          <div className="flex justify-center">
-            <button
-              onClick={handlelogin}
-              className="bg-white border-2 border-black hover:bg-black hover:text-white transition-colors duration-200 px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3 text-sm sm:text-base md:text-lg w-full sm:w-auto justify-center"
-            >
-              <img
-                src="https://developers.google.com/identity/images/g-logo.png"
-                alt="Google"
-                className="w-5 h-5 sm:w-6 sm:h-6"
-              />
-              <span>Konekte ak Google</span>
-            </button>
-          </div>
+
+export default function Login() {
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    })
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white border border-mist rounded-2xl shadow-sm p-8 sm:p-10 text-center">
+          <span className="inline-flex flex-col gap-1 mb-5" aria-hidden="true">
+            <span className="w-10 h-2.5 rounded-sm bg-blueht" />
+            <span className="w-10 h-2.5 rounded-sm bg-redht" />
+          </span>
+          <h1 className="font-display text-3xl font-bold mb-2">Diksyonè Kreyòl</h1>
+          <h2 className="text-lg text-ink mb-1">Konekte</h2>
+          <p className="text-sm text-ink-soft mb-8">
+            Konekte pou w ka kontribye nan diksyonè a
+          </p>
+
+          <button
+            onClick={handleLogin}
+            className="w-full bg-white border border-mist hover:border-blueht hover:shadow-md transition-all rounded-full px-6 py-3 flex items-center justify-center gap-3 text-sm sm:text-base font-medium"
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              className="w-5 h-5"
+            />
+            <span>Konekte ak Google</span>
+          </button>
+
+          <div className="tricolor-rule mt-8 max-w-[100px] mx-auto" />
         </div>
       </div>
-    )
+    </div>
+  )
 }

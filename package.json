@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/third-parties": "^15.3.2",
     "@supabase/supabase-js": "^2.49.8",
     "next": "15.3.2",
     "react": "^19.0.0",

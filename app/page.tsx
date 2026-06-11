@@ -9,36 +9,71 @@ type User = {
 }
 
 export default function Home() {
-    const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [checking, setChecking] = useState(true)
+
   useEffect(() => {
     const getUser = async () => {
-      const {data} = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
       setUser(data?.user as User | null);
+      setChecking(false)
     };
-
     getUser();
   }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-ink-soft italic">Chajman…</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       {user ? (
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-6 md:py-8">
-          <div className="text-center mb-4 sm:mb-6 md:mb-8">
-            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-4">Ajoute Nouvo Mo</h1>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+          <div className="text-center mb-8">
+            <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-redht font-semibold mb-2">
+              Espas kontribitè
+            </p>
+            <h1 className="font-display text-3xl sm:text-4xl font-bold">
+              Ajoute yon nouvo mo
+            </h1>
+            <p className="text-ink-soft mt-2 max-w-lg mx-auto text-sm sm:text-base">
+              Plis detay ou bay, pi rich diksyonè a ap ye. Sèl mo a ak
+              definisyon an obligatwa — rès la se bonis!
+            </p>
           </div>
           <Add />
         </div>
       ) : (
-        <div className="flex items-center justify-center min-h-[80vh] px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="text-center max-w-[90%] sm:max-w-2xl lg:max-w-3xl">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 md:mb-6">Diksyone Kreyòl</h1>
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-2 sm:mb-3 md:mb-4 text-gray-600">Nou ka ajoute mo sou diksyone kreyòl</p>
-            <p className="text-sm sm:text-base md:text-lg text-gray-500 mb-4 sm:mb-6 md:mb-8">Konekte pou ajoute mo nan diksyone a</p>
-            <a 
-              href="/component/login" 
-              className="inline-block bg-black hover:bg-gray-800 text-white px-6 sm:px-8 md:px-10 lg:px-12 py-2.5 sm:py-3 text-sm sm:text-base md:text-lg transition-colors duration-200 border border-black"
+        <div className="flex items-center justify-center min-h-[85vh] px-4">
+          <div className="text-center max-w-xl">
+            <span className="inline-flex flex-col gap-1 mb-6" aria-hidden="true">
+              <span className="w-12 h-3 rounded-sm bg-blueht" />
+              <span className="w-12 h-3 rounded-sm bg-redht" />
+            </span>
+            <h1 className="font-display text-4xl sm:text-5xl font-bold mb-4">
+              Diksyonè Kreyòl
+            </h1>
+            <p className="text-lg sm:text-xl text-ink-soft mb-2">
+              Ede nou bati pi gwo diksyonè kreyòl ayisyen an sou entènèt.
+            </p>
+            <p className="text-sm sm:text-base text-ink-soft mb-8">
+              Konekte pou w ka ajoute mo, definisyon, egzanp ak plis ankò.
+            </p>
+            <a
+              href="/component/login"
+              className="inline-block bg-blueht hover:bg-blueht-deep text-white px-10 py-3 rounded-full text-base font-medium transition-colors"
             >
               Konekte
             </a>
+            <p className="mt-6 text-sm">
+              <a href="https://diksyonekreyol.org" className="text-ink-soft hover:text-blueht transition-colors">
+                ← Tounen sou diksyonè a
+              </a>
+            </p>
           </div>
         </div>
       )}

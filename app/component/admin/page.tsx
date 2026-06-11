@@ -1,18 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { sendGAEvent } from '@next/third-parties/google'
 import { supabase } from '../db'
 import { useRouter } from 'next/navigation'
-
-type Word = {
-  id: number
-  word: string
-  def: string
-  sino: string
-  kont: string
-  approved: boolean
-  created_at: string
-  submitted_by: string
-}
+import { WordRow, fromList } from '../wordUtils'
 
 type AdminUser = {
   id: string
@@ -27,30 +18,49 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [currentUserEmail, setCurrentUserEmail] = useState('')
-  
-  // Pending words state
-  const [pendingWords, setPendingWords] = useState<Word[]>([])
+
+  const [pendingWords, setPendingWords] = useState<WordRow[]>([])
   const [loadingWords, setLoadingWords] = useState(true)
-  
-  // Admin management state
+
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [newAdminEmail, setNewAdminEmail] = useState('')
+  const [newAdminIsSuper, setNewAdminIsSuper] = useState(false)
   const [addingAdmin, setAddingAdmin] = useState(false)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
-  const checkAdminAccess = async () => {
+  const fetchPendingWords = async () => {
+    setLoadingWords(true)
+    const { data, error } = await supabase
+      .from('words')
+      .select('*')
+      .eq('approved', false)
+      .order('created_at', { ascending: false })
+
+    if (error) console.error('Error fetching pending words:', error)
+    else setPendingWords(data || [])
+    setLoadingWords(false)
+  }
+
+  const fetchAdminUsers = async () => {
+    const { data, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) console.error('Error fetching admin users:', error)
+    else setAdminUsers(data || [])
+  }
+
+  const checkAdminAccess = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      
       if (!user) {
         router.push('/component/login')
         return
       }
-
       setCurrentUserEmail(user.email || '')
 
-      // Check if user is admin
       const { data: adminData, error: adminError } = await supabase
         .from('admin_users')
         .select('*')
@@ -64,53 +74,25 @@ export default function AdminDashboard() {
 
       setIsAdmin(true)
       setIsSuperAdmin(adminData.is_super_admin)
-      
-      // Load pending words
       await fetchPendingWords()
-      
-      // Load admin users if super admin
       if (adminData.is_super_admin) {
         await fetchAdminUsers()
       }
-      
       setLoading(false)
     } catch (error) {
       console.error('Error checking admin access:', error)
       setLoading(false)
     }
-  }
+  }, [router])
 
   useEffect(() => {
     checkAdminAccess()
   }, [checkAdminAccess])
 
-  const fetchPendingWords = async () => {
-    setLoadingWords(true)
-    const { data, error } = await supabase
-      .from('words')
-      .select('*')
-      .eq('approved', false)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching pending words:', error)
-    } else {
-      setPendingWords(data || [])
-    }
-    setLoadingWords(false)
-  }
-
-  const fetchAdminUsers = async () => {
-    const { data, error } = await supabase
-      .from('admin_users')
-      .select('*')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching admin users:', error)
-    } else {
-      setAdminUsers(data || [])
-    }
+  const showMessage = (msg: string, type: 'success' | 'error') => {
+    setMessage(msg)
+    setMessageType(type)
+    setTimeout(() => setMessage(''), 4000)
   }
 
   const approveWord = async (wordId: number) => {
@@ -123,6 +105,7 @@ export default function AdminDashboard() {
       console.error('Error approving word:', error)
       showMessage('Erè pandan apwobasyon', 'error')
     } else {
+      sendGAEvent('event', 'word_approved', { word_id: String(wordId) })
       showMessage('Mo apwouve avèk siksè!', 'success')
       await fetchPendingWords()
     }
@@ -138,7 +121,8 @@ export default function AdminDashboard() {
       console.error('Error rejecting word:', error)
       showMessage('Erè pandan rejè', 'error')
     } else {
-      showMessage('Mo rejte e efase', 'success')
+      sendGAEvent('event', 'word_rejected', { word_id: String(wordId) })
+      showMessage('Mo a rejte e efase', 'success')
       await fetchPendingWords()
     }
   }
@@ -148,17 +132,13 @@ export default function AdminDashboard() {
       showMessage('Tanpri antre yon adrès imel', 'error')
       return
     }
-
     setAddingAdmin(true)
-    
-    // First, get the current user's ID
     const { data: { user } } = await supabase.auth.getUser()
-    
     const { error } = await supabase
       .from('admin_users')
-      .insert([{ 
+      .insert([{
         email: newAdminEmail.trim().toLowerCase(),
-        is_super_admin: false,
+        is_super_admin: newAdminIsSuper,
         created_by: user?.id
       }])
 
@@ -170,11 +150,11 @@ export default function AdminDashboard() {
         showMessage('Erè pandan ajoute admin', 'error')
       }
     } else {
-      showMessage('Admin ajoute avèk siksè!', 'success')
+      showMessage(newAdminIsSuper ? 'Super admin ajoute avèk siksè!' : 'Admin ajoute avèk siksè!', 'success')
       setNewAdminEmail('')
+      setNewAdminIsSuper(false)
       await fetchAdminUsers()
     }
-    
     setAddingAdmin(false)
   }
 
@@ -183,11 +163,9 @@ export default function AdminDashboard() {
       showMessage('Ou pa ka retire tèt ou kòm admin', 'error')
       return
     }
-
     if (!confirm(`Èske ou sèten ou vle retire ${email} kòm admin?`)) {
       return
     }
-
     const { error } = await supabase
       .from('admin_users')
       .delete()
@@ -202,31 +180,25 @@ export default function AdminDashboard() {
     }
   }
 
-  const showMessage = (msg: string, type: 'success' | 'error') => {
-    setMessage(msg)
-    setMessageType(type)
-    setTimeout(() => setMessage(''), 4000)
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-lg">Chaje...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-ink-soft italic">Chajman…</p>
       </div>
     )
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-4">Aksè Refize</h1>
-          <p className="text-gray-600 mb-6">Ou pa gen pèmisyon pou aksede paj sa a.</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center max-w-md bg-white border border-mist rounded-2xl shadow-sm p-8">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-3">Aksè refize</h1>
+          <p className="text-ink-soft mb-6 text-sm">Ou pa gen pèmisyon pou aksede paj sa a.</p>
           <button
             onClick={() => router.push('/')}
-            className="bg-black text-white px-6 py-3 hover:bg-gray-800 transition-colors"
+            className="bg-blueht text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-blueht-deep transition-colors"
           >
-            Retounen nan Paj Akèy
+            Retounen nan paj akèy
           </button>
         </div>
       </div>
@@ -234,161 +206,184 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 font-mono">
-      <div className="max-w-[1000px] mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        
+    <div className="min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+
         {/* Header */}
-        <div className="mb-4 sm:mb-6 border-2 border-black bg-white p-2 sm:p-3">
-          <h1 className="text-sm sm:text-base font-bold mb-1">ADMIN DASHBOARD v1.0</h1>
-          <p className="text-xs text-gray-700">
-            User: <span className="font-bold">{currentUserEmail}</span>
-            {isSuperAdmin && <span className="ml-2 text-xs bg-black text-white px-1 py-0.5">SUPERADMIN</span>}
+        <div className="mb-6">
+          <p className="text-xs uppercase tracking-[0.2em] text-redht font-semibold mb-1">
+            Administrasyon
           </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold">Tablodbò</h1>
+            {isSuperAdmin && (
+              <span className="text-[10px] uppercase tracking-wide bg-gold/20 text-[#8a6414] font-bold px-2 py-0.5 rounded-full">
+                Super admin
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-ink-soft mt-1">{currentUserEmail}</p>
         </div>
 
-        {/* Message Display */}
         {message && (
-          <div className={`mb-4 p-2 text-xs border-2 ${messageType === 'success' ? 'bg-green-50 text-green-900 border-green-900' : 'bg-red-50 text-red-900 border-red-900'}`}>
+          <div className={`mb-5 p-3 rounded-xl text-sm text-white text-center ${messageType === 'success' ? 'bg-blueht' : 'bg-redht'}`}>
             {message}
           </div>
         )}
 
-        {/* Pending Words Section */}
-        <div className="mb-4 sm:mb-6">
-          <div className="border-2 border-black bg-white p-2 sm:p-3">
-            <h2 className="text-xs sm:text-sm font-bold mb-2 border-b border-gray-400 pb-1">
-              [ PENDING SUBMISSIONS: {pendingWords.length} ]
-            </h2>
-            
-            {loadingWords ? (
-              <p className="text-xs text-gray-600 py-2">Loading...</p>
-            ) : pendingWords.length === 0 ? (
-              <p className="text-xs text-gray-600 py-4">No pending words.</p>
-            ) : (
-              <div className="space-y-2">
-                {pendingWords.map((word) => (
-                  <div key={word.id} className="border border-gray-400 p-2 bg-gray-50">
-                    <div className="mb-2">
-                      <h3 className="text-xs sm:text-sm font-bold">
-                        &gt; {word.word}
-                      </h3>
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {new Date(word.created_at).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false
-                        })}
-                      </p>
-                    </div>
+        {/* Pending Words */}
+        <div className="bg-white border border-mist rounded-2xl shadow-sm p-5 sm:p-6 mb-6">
+          <h2 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-4">
+            Mo k ap tann apwobasyon ({pendingWords.length})
+          </h2>
 
-                    <div className="space-y-1.5 mb-2 text-xs">
-                      <div>
-                        <span className="font-bold">DEF:</span> {word.def}
-                      </div>
-
-                      {word.sino && (
-                        <div>
-                          <span className="font-bold">SYN:</span> {word.sino}
-                        </div>
-                      )}
-
-                      {word.kont && (
-                        <div>
-                          <span className="font-bold">ANT:</span> {word.kont}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => approveWord(word.id)}
-                        className="flex-1 bg-black text-white hover:bg-gray-700 py-1 text-[10px] sm:text-xs transition-colors border border-black"
-                      >
-                        [APPROVE]
-                      </button>
-                      <button
-                        onClick={() => rejectWord(word.id)}
-                        className="flex-1 bg-white text-black hover:bg-gray-200 py-1 text-[10px] sm:text-xs transition-colors border border-black"
-                      >
-                        [REJECT]
-                      </button>
-                    </div>
+          {loadingWords ? (
+            <p className="text-sm text-ink-soft italic py-3">Chajman…</p>
+          ) : pendingWords.length === 0 ? (
+            <p className="text-sm text-ink-soft py-4 text-center">
+              Pa gen mo k ap tann — tout bagay ajou!
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {pendingWords.map((word) => (
+                <div key={word.id} className="border border-mist rounded-xl p-4 bg-paper">
+                  <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap mb-1">
+                    <h3 className="font-display text-xl font-bold">{word.word}</h3>
+                    {word.api && <span className="font-mono text-xs text-ink-soft">{word.api}</span>}
+                    {word.nature && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-redht-soft text-redht font-semibold uppercase tracking-wide">
+                        {word.nature}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-ink-soft ml-auto">
+                      {new Date(word.created_at).toLocaleString('fr-FR', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+
+                  <p className="text-sm text-ink-soft leading-relaxed mb-2">{word.def}</p>
+
+                  {word.exemple && word.exemple.length > 0 && (
+                    <ul className="mb-2 space-y-0.5">
+                      {word.exemple.map((ex, i) => (
+                        <li key={i} className="font-display italic text-ink-soft/80 text-sm border-l-2 border-blueht/30 pl-3">
+                          « {ex} »
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-soft mb-3">
+                    {word.sino && word.sino.length > 0 && (
+                      <span><span className="font-semibold text-blueht">Sinonim:</span> {fromList(word.sino)}</span>
+                    )}
+                    {word.kont && word.kont.length > 0 && (
+                      <span><span className="font-semibold text-redht">Antonim:</span> {fromList(word.kont)}</span>
+                    )}
+                    {word.etymology && (
+                      <span><span className="font-semibold">Etimoloji:</span> {word.etymology}</span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approveWord(word.id)}
+                      className="flex-1 bg-blueht text-white hover:bg-blueht-deep py-2 rounded-full text-xs sm:text-sm font-medium transition-colors"
+                    >
+                      Apwouve
+                    </button>
+                    <button
+                      onClick={() => rejectWord(word.id)}
+                      className="flex-1 bg-white text-redht border border-redht hover:bg-redht hover:text-white py-2 rounded-full text-xs sm:text-sm font-medium transition-colors"
+                    >
+                      Rejte
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Admin Management Section (Super Admin Only) */}
+        {/* Admin Management (Super Admin Only) */}
         {isSuperAdmin && (
-          <div className="border-2 border-black bg-white p-2 sm:p-3">
-            <h2 className="text-xs sm:text-sm font-bold mb-2 border-b border-gray-400 pb-1">
-              [ ADMIN MANAGEMENT ]
+          <div className="bg-white border border-mist rounded-2xl shadow-sm p-5 sm:p-6">
+            <h2 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-4">
+              Jesyon admin yo
             </h2>
-            
-            {/* Add Admin Form */}
-            <div className="mb-3 p-2 bg-gray-50 border border-gray-400">
-              <h3 className="text-[10px] sm:text-xs font-bold mb-2">ADD NEW ADMIN:</h3>
+
+            <div className="mb-5 p-4 bg-paper border border-mist rounded-xl">
+              <h3 className="text-sm font-semibold mb-2">Ajoute yon nouvo admin</h3>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="email"
-                  placeholder="email@example.com"
+                  placeholder="imel@egzanp.com"
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
-                  className="flex-1 px-2 py-1 border border-gray-400 focus:outline-none focus:border-black text-xs font-mono"
+                  className="flex-1 px-3.5 py-2 bg-white border border-mist rounded-full text-sm focus:outline-none focus:border-blueht focus:ring-2 focus:ring-blueht/15 transition-all"
                   disabled={addingAdmin}
                 />
                 <button
                   onClick={addAdmin}
                   disabled={addingAdmin}
-                  className="bg-black text-white hover:bg-gray-700 px-3 py-1 text-[10px] sm:text-xs transition-colors disabled:opacity-50 border border-black whitespace-nowrap"
+                  className="bg-blueht text-white hover:bg-blueht-deep px-5 py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-60 whitespace-nowrap"
                 >
-                  {addingAdmin ? '[ADDING...]' : '[ADD]'}
+                  {addingAdmin ? 'Ajoute…' : 'Ajoute'}
                 </button>
               </div>
+              <label className="flex items-center gap-2 mt-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={newAdminIsSuper}
+                  onChange={(e) => setNewAdminIsSuper(e.target.checked)}
+                  disabled={addingAdmin}
+                  className="w-4 h-4 accent-[#00209f]"
+                />
+                <span className="text-sm">
+                  Fè li <span className="font-semibold">super admin</span>
+                  <span className="text-ink-soft"> — l ap ka jere lòt admin tou</span>
+                </span>
+              </label>
             </div>
 
-            {/* Admin Users List */}
-            <div>
-              <h3 className="text-[10px] sm:text-xs font-bold mb-2">ADMIN LIST ({adminUsers.length}):</h3>
-              {adminUsers.length === 0 ? (
-                <p className="text-xs text-gray-600 py-3">No admins found.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {adminUsers.map((admin) => (
-                    <div
-                      key={admin.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 border border-gray-400 bg-gray-50"
-                    >
-                      <div className="flex-1">
-                        <p className="font-bold text-xs">&gt; {admin.email}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-0.5">
-                          {admin.is_super_admin && (
-                            <span className="text-[9px] bg-black text-white px-1 py-0.5">SUPER</span>
-                          )}
-                          <span className="text-[9px] text-gray-500">
-                            {new Date(admin.created_at).toLocaleDateString('en-US')}
+            <h3 className="text-sm font-semibold mb-2">Lis admin yo ({adminUsers.length})</h3>
+            {adminUsers.length === 0 ? (
+              <p className="text-sm text-ink-soft py-3">Pa gen admin.</p>
+            ) : (
+              <div className="space-y-2">
+                {adminUsers.map((admin) => (
+                  <div
+                    key={admin.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 border border-mist rounded-xl bg-paper"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{admin.email}</p>
+                      <div className="flex flex-wrap gap-2 mt-0.5 items-center">
+                        {admin.is_super_admin && (
+                          <span className="text-[9px] uppercase tracking-wide bg-gold/20 text-[#8a6414] font-bold px-1.5 py-0.5 rounded-full">
+                            Super
                           </span>
-                        </div>
+                        )}
+                        <span className="text-[11px] text-ink-soft">
+                          depi {new Date(admin.created_at).toLocaleDateString('fr-FR')}
+                        </span>
                       </div>
-                      
-                      {!admin.is_super_admin && admin.email !== currentUserEmail && (
-                        <button
-                          onClick={() => removeAdmin(admin.id, admin.email)}
-                          className="bg-white text-black hover:bg-gray-200 px-2 py-1 text-[10px] transition-colors whitespace-nowrap border border-black"
-                        >
-                          [REMOVE]
-                        </button>
-                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+                    {!admin.is_super_admin && admin.email !== currentUserEmail && (
+                      <button
+                        onClick={() => removeAdmin(admin.id, admin.email)}
+                        className="text-redht border border-redht hover:bg-redht hover:text-white px-3 py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        Retire
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
