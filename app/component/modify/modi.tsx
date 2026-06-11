@@ -40,7 +40,7 @@ export default function Modi({mo, de, si, ant, di, et, ex, na, ap, onDelete}: Mo
     setNature(na)
     setApi(ap)
     checkAdminStatus()
-   },[mo, de, JSON.stringify(si), JSON.stringify(ant), et, JSON.stringify(ant), na, ap])
+   },[mo])
 
    const checkAdminStatus = async () => {
     const { data: { user } } = await supabase.auth.getUser()

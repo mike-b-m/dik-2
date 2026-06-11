@@ -1,5 +1,6 @@
 "use client"
 import { supabase } from "../db"
+import Image from "next/image"
  export default function Login(){
    const handlelogin= async () => {
         await supabase.auth.signInWithOAuth({
@@ -20,7 +21,7 @@ import { supabase } from "../db"
               onClick={handlelogin}
               className="bg-white border-2 border-black hover:bg-black hover:text-white transition-colors duration-200 px-4 sm:px-6 md:px-8 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3 text-sm sm:text-base md:text-lg w-full sm:w-auto justify-center"
             >
-              <img
+              <Image
                 src="https://developers.google.com/identity/images/g-logo.png"
                 alt="Google"
                 className="w-5 h-5 sm:w-6 sm:h-6"

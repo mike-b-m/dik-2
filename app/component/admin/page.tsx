@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState,useCallback } from 'react'
 import { supabase } from '../db'
 import { useRouter } from 'next/navigation'
 
@@ -39,53 +39,8 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
-  const checkAdminAccess = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/component/login')
-        return
-      }
-
-      setCurrentUserEmail(user.email || '')
-
-      // Check if user is admin
-      const { data: adminData, error: adminError } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-
-      if (adminError || !adminData) {
-        setLoading(false)
-        return
-      }
-
-      setIsAdmin(true)
-      setIsSuperAdmin(adminData.is_super_admin)
-      
-      // Load pending words
-      await fetchPendingWords()
-      
-      // Load admin users if super admin
-      if (adminData.is_super_admin) {
-        await fetchAdminUsers()
-      }
-      
-      setLoading(false)
-    } catch (error) {
-      console.error('Error checking admin access:', error)
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    checkAdminAccess()
-  }, [checkAdminAccess])
-
-  const fetchPendingWords = async () => {
-    setLoadingWords(true)
+  const fetchPendingWords = useCallback(async () => {
+  setLoadingWords(true)
     const { data, error } = await supabase
       .from('words')
       .select('*')
@@ -98,9 +53,10 @@ export default function AdminDashboard() {
       setPendingWords(data || [])
     }
     setLoadingWords(false)
-  }
+}, []);
 
-  const fetchAdminUsers = async () => {
+const fetchAdminUsers = useCallback(async () => {
+  setLoading(true)
     const { data, error } = await supabase
       .from('admin_users')
       .select('*')
@@ -111,7 +67,55 @@ export default function AdminDashboard() {
     } else {
       setAdminUsers(data || [])
     }
+    setLoading(false)
+}, []);
+
+const checkAdminAccess = useCallback(async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      router.push('/component/login')
+      return
+    }
+
+    setCurrentUserEmail(user.email || '')
+
+    // Check if user is admin
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('email', user.email)
+      .single()
+
+    if (adminError || !adminData) {
+      setLoading(false)
+      return
+    }
+
+    setIsAdmin(true)
+    setIsSuperAdmin(adminData.is_super_admin)
+    
+    // Load pending words
+    await fetchPendingWords()
+    
+    // Load admin users if super admin
+    if (adminData.is_super_admin) {
+      await fetchAdminUsers()
+    }
+    
+    setLoading(false)
+  } catch (error) {
+    console.error('Error checking admin access:', error)
+    setLoading(false)
   }
+}, [router, fetchPendingWords, fetchAdminUsers]) // 🚀 Functions it calls go here
+
+
+  useEffect(() => {
+    checkAdminAccess()
+  }, [checkAdminAccess])
+
 
   const approveWord = async (wordId: number) => {
     const { error } = await supabase

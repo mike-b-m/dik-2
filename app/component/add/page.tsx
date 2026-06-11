@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from "react";
 import { supabase } from "../db";
-import { Space_Mono } from "next/font/google";
+//import { Space_Mono } from "next/font/google";
 
 export default function Add(){
     const [word, setWord] = useState("")
