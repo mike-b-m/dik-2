@@ -1,408 +1,307 @@
 'use client'
 import { useState, useEffect } from "react";
+import { sendGAEvent } from "@next/third-parties/google";
 import { supabase } from "../db";
-//import { Space_Mono } from "next/font/google";
+import { NATURE_OPTIONS, toList, linesToList } from "../wordUtils";
 
-export default function Add(){
-    const [word, setWord] = useState("")
+const inputCls =
+  "w-full px-3.5 py-2.5 bg-white border border-mist rounded-xl text-sm focus:outline-none focus:border-blueht focus:ring-2 focus:ring-blueht/15 transition-all placeholder:text-ink-soft/50";
+const labelCls = "block text-sm font-semibold mb-1.5";
+const hintCls = "block text-xs text-ink-soft font-normal mt-0.5";
+
+export default function Add() {
+  const [word, setWord] = useState("")
+  const [nature, setNature] = useState("")
   const [def, setDef] = useState("")
-  const [sino, setSino] = useState<string[]>([""])
-  const [kont, setKont] = useState<string[]>([""])
-  const [exemple,setExemple] = useState<string[]>([""])
+  const [api, setApi] = useState("")
+  const [sino, setSino] = useState("")
+  const [kont, setKont] = useState("")
+  const [exemple, setExemple] = useState("")
+  const [etymology, setEtymology] = useState("")
   const [success, setSuccess] = useState(false)
-  const [etimologie,setEtimologie]= useState("")
+  const [errorMsg, setErrorMsg] = useState("")
   const [showPreview, setShowPreview] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [api,setApi] = useState('')
-  const [nature,setNature] = useState('')
 
   useEffect(() => {
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: adminData } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('email', user.email)
+          .single()
+        setIsAdmin(!!adminData)
+      }
+    }
     checkAdminStatus()
   }, [])
 
-  const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-      
-      setIsAdmin(!!adminData)
-    }
-  }
-
-   const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
+  const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setShowPreview(true)
-   }
-   // for handle synonime
-   const handleListSynonym = (index: number, field: string, value: string) => {
-    const newRows = [...sino]
-    newRows[index] = value 
-    setSino(newRows)
+  }
 
-  }
-  const addRow = () => {
-    setSino([...sino, ''])
-  }
-  const removeRow = (index: number) => {
-    if (sino.length > 1) {
-      setSino(sino.filter((_, i) => i !== index))
+  const handleSubmit = async () => {
+    setSaving(true)
+    setErrorMsg("")
+    const { data: { user } } = await supabase.auth.getUser()
+
+    const { error } = await supabase.from('words').insert([{
+      word: word.trim(),
+      def: def.trim(),
+      nature: nature || null,
+      api: api.trim() || null,
+      sino: toList(sino),
+      kont: toList(kont),
+      exemple: linesToList(exemple),
+      etymology: etymology.trim() || null,
+      approved: isAdmin, // admins publish directly; others wait for approval
+      submitted_by: user?.id,
+    }])
+
+    setSaving(false)
+    if (error) {
+      console.error('Error:', error)
+      setErrorMsg("Yon erè rive pandan anrejistreman an. Tanpri eseye ankò.")
+    } else {
+      sendGAEvent("event", "word_submitted", { word: word.trim(), auto_approved: String(isAdmin) })
+      setSuccess(true)
+      setWord(""); setNature(""); setDef(""); setApi("");
+      setSino(""); setKont(""); setExemple(""); setEtymology("");
+      setShowPreview(false)
+      setTimeout(() => setSuccess(false), 4000)
     }
   }
 
-  // for handle antonim
-   const handleListKont = (index: number, field: string, value: string) => {
-    const newRows = [...kont]
-    newRows[index] = value 
-    setKont(newRows)
-
-  }
-  const addkont = () => {
-    setKont([...kont, ''])
-  }
-  const removeKont = (index: number) => {
-    if (kont.length > 1) {
-      setKont(kont.filter((_, i) => i !== index))
-    }
-  }
-
-  // for handle exenple
-   const handleListExemple = (index: number, field: string, value: string) => {
-    const newRows = [...exemple]
-    newRows[index] = value 
-    setExemple(newRows)
-
-  }
-  const addExemple = () => {
-    setExemple([...exemple, ''])
-  }
-  const removeExemple = (index: number) => {
-    if (exemple.length > 1) {
-      setExemple(exemple.filter((_, i) => i !== index))
-    }
-  }
-   const HandleSubmit = async () => {
-            // Get current user for submitted_by field
-            const { data: { user } } = await supabase.auth.getUser()
-            
-            // Check if user is admin
-            let isAdmin = false
-            if (user) {
-              const { data: adminData } = await supabase
-                .from('admin_users')
-                .select('*')
-                .eq('email', user.email)
-                .single()
-              
-              isAdmin = !!adminData
-            }
-            
-            const {data, error} = await supabase.from('words')
-            .insert([{
-              word, 
-              def,
-              sino, 
-              kont,
-              etymology: etimologie,
-              api,
-              exemple,
-              nature,
-              approved: isAdmin, // Auto-approve if admin, otherwise needs approval
-              submitted_by: user?.id
-            }])
-    
-            if (error) console.error('Error:', error.message)
-            else {
-              console.log('saved:', data)
-              setSuccess(true)
-              setWord("")
-              setDef("")
-              setSino([])
-              setKont([])
-              setEtimologie("")
-              setApi("")
-              setNature("")
-              setExemple([])  
-              setShowPreview(false)
-              setTimeout(() => setSuccess(false), 3000)
-            }
-  }
-
-  const handleEdit = () => {
-    setShowPreview(false)
+  const previewList = (s: string, lines = false) => {
+    const items = lines ? linesToList(s) : toList(s)
+    return items.length > 0 ? items : null
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto">
-      <div className="bg-white border border-gray-200 p-3 sm:p-4">
-        <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4">Ajoute Nouvo Mo</h2>
-        
+    <div className="max-w-3xl mx-auto">
+      <div className="bg-white border border-mist rounded-2xl shadow-sm p-5 sm:p-7">
         {success && (
-          <div className="mb-3 p-2 bg-black text-white text-center text-sm">
-            {isAdmin ? 'Mo a te ajoute avèk siksè!' : 'Mo a te soumèt avèk siksè! Li ap tann apwobasyon.'}
+          <div className="mb-4 p-3 rounded-xl bg-blueht text-white text-center text-sm">
+            {isAdmin
+              ? 'Mo a pibliye avèk siksè!'
+              : 'Mo a soumèt avèk siksè! L ap parèt apre yon admin apwouve li.'}
           </div>
         )}
-        
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-redht text-white text-center text-sm">
+            {errorMsg}
+          </div>
+        )}
+
         {!showPreview ? (
-          <form onSubmit={handlePreview} className="space-y-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <form onSubmit={handlePreview} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold mb-1">Mo</label>
-                <input 
-                  type="text" 
-                  placeholder="Antre mo a" 
-                  name="word" 
+                <label className={labelCls}>Mo *</label>
+                <input
+                  type="text"
+                  placeholder="egz. Lanmou"
                   value={word}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
+                  className={`${inputCls} font-display text-lg`}
                   onChange={e => setWord(e.target.value)}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Api</label>
-                <input 
-                  type="text" 
-                  placeholder="Api mo a" 
-                  name="api" 
+                <label className={labelCls}>Nati mo a</label>
+                <select
+                  value={nature}
+                  onChange={e => setNature(e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="">Chwazi…</option>
+                  {NATURE_OPTIONS.map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                Definisyon *
+                <span className={hintCls}>Eksplike sans mo a an kreyòl, klè e konplè.</span>
+              </label>
+              <textarea
+                placeholder="egz. Lanmou se yon santiman pwofon afeksyon…"
+                value={def}
+                rows={3}
+                className={`${inputCls} resize-none`}
+                onChange={e => setDef(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className={labelCls}>
+                Egzanp fraz
+                <span className={hintCls}>Yon fraz pa liy.</span>
+              </label>
+              <textarea
+                placeholder={"Lanmou fè lavi a pi bèl.\nLanmou yon manman pa gen limit."}
+                value={exemple}
+                rows={3}
+                className={`${inputCls} resize-none`}
+                onChange={e => setExemple(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>
+                  Sinonim
+                  <span className={hintCls}>Separe yo ak vigil.</span>
+                </label>
+                <textarea
+                  placeholder="afeksyon, tandrès, renmen"
+                  value={sino}
+                  rows={2}
+                  className={`${inputCls} resize-none`}
+                  onChange={e => setSino(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className={labelCls}>
+                  Antonim
+                  <span className={hintCls}>Separe yo ak vigil.</span>
+                </label>
+                <textarea
+                  placeholder="rayisman, mepri"
+                  value={kont}
+                  rows={2}
+                  className={`${inputCls} resize-none`}
+                  onChange={e => setKont(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>
+                  Pwononsyasyon (API)
+                  <span className={hintCls}>Fakiltatif — fòma /lɑ̃.mu/</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="/lɑ̃.mu/"
                   value={api}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
+                  className={`${inputCls} font-mono`}
                   onChange={e => setApi(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold mb-1">Nati mo a</label>
-                <input 
-                  type="text" 
-                  placeholder="nati mo a" 
-                  name="nature" 
-                  value={nature}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                  onChange={e => setNature(e.target.value)}
+                <label className={labelCls}>
+                  Etimoloji
+                  <span className={hintCls}>Ki kote mo a soti?</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Soti nan franse « amour »…"
+                  value={etymology}
+                  className={inputCls}
+                  onChange={e => setEtymology(e.target.value)}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-1">Definisyon</label>
-                <textarea  
-                  placeholder="Definisyon mo a" 
-                  name="def" 
-                  value={def} 
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm"
-                  onChange={e => setDef(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-1">Etimologie</label>
-                <textarea  
-                  placeholder="Etimologie mo a" 
-                  name="etimologie" 
-                  value={etimologie}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                  onChange={e => setEtimologie(e.target.value)}
-                  required
-                />
-              </div>
-
-              {/* sinonim section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Sinonim {sino.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addRow}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 mb-2 text-sm transition-colors duration-200"
-                  >
-                    Ajoute Sinonim
-                  </button>
-                </div>
-                {sino.map((syn, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {sino.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeRow(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Sinonim</label>
-                    <input
-                      type="text"
-                      placeholder="Sinonim"
-                      value={syn}
-                      onChange={(e) => handleListSynonym(index, 'sino', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* antonim section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Antonim {kont.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addkont}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
-                  >
-                    Ajoute Antonim
-                  </button>
-                </div>
-                {kont.map((ant, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {kont.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeKont(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Antonim</label>
-                    <input
-                      type="text"
-                      placeholder="Antonim"
-                      value={ant}
-                      onChange={(e) => handleListKont(index, 'kont', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* exemple section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Examp {kont.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addExemple}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
-                  >
-                    Ajoute Examp
-                  </button>
-                </div>
-                {exemple.map((ex, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {exemple.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeExemple(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Examp</label>
-                    <input
-                      type="text"
-                      placeholder="Examp"
-                      value={ex}
-                      onChange={(e) => handleListExemple(index, 'exemple', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
               </div>
             </div>
-            
+
             <div className="flex justify-center pt-2">
-              <button 
+              <button
                 type="submit"
-                className="bg-black text-white hover:bg-gray-800 px-6 sm:px-8 py-2 text-sm transition-colors duration-200 w-full sm:w-auto"
+                className="bg-blueht text-white hover:bg-blueht-deep px-8 py-2.5 rounded-full text-sm font-medium transition-colors w-full sm:w-auto"
               >
-                Revize Anvan Ajoute
+                Revize anvan ou soumèt
               </button>
             </div>
           </form>
         ) : (
-          <div className="space-y-3">
-            <div className="bg-gray-50 border-2 border-black p-3 sm:p-4">
-              <h3 className="text-base sm:text-lg font-bold mb-2 border-b-2 border-black pb-1">Revizyon</h3>
-              
-              <div className="space-y-2">
-                <div>
-                  <h4 className="font-semibold text-sm mb-0.5">Mo:</h4>
-                  <p className="text-gray-700 text-sm">{word}</p>
+          <div className="space-y-4">
+            {/* Preview rendered like the real dictionary entry */}
+            <div className="bg-paper border border-mist rounded-2xl p-5 sm:p-6">
+              <p className="text-xs uppercase tracking-widest text-redht font-semibold mb-3">
+                Revizyon — men kijan antre a ap parèt
+              </p>
+
+              <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap">
+                <h3 className="font-display text-3xl font-bold">{word}</h3>
+                {api && <span className="font-mono text-ink-soft text-sm">{api}</span>}
+                {nature && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-redht-soft text-redht font-semibold uppercase tracking-wide">
+                    {nature}
+                  </span>
+                )}
+              </div>
+
+              <div className="tricolor-rule my-4 max-w-[100px]" />
+
+              <p className="leading-relaxed mb-4">{def}</p>
+
+              {previewList(exemple, true) && (
+                <div className="mb-4">
+                  <h4 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-1.5">Egzanp</h4>
+                  <ul className="space-y-1 border-l-2 border-blueht/30 pl-3">
+                    {previewList(exemple, true)!.map((ex, i) => (
+                      <li key={i} className="font-display italic text-ink-soft text-sm">« {ex} »</li>
+                    ))}
+                  </ul>
                 </div>
+              )}
 
-
-                <div>
-                  <h4 className="font-semibold text-sm mb-0.5">Api:</h4>
-                  <p className="text-gray-700 text-sm">{api}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-sm mb-0.5">Etimoloji</h4>
-                  <p className="text-gray-700 text-sm">{etimologie}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-sm mb-0.5">Definisyon:</h4>
-                  <p className="text-gray-700 text-sm leading-relaxed">{def}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-sm mb-0.5">Exemp:</h4>
-                  <p className="text-gray-700 text-sm">
-                    <ol className="list-disc list-inside">
-                      {exemple.map((ex, i) => (
-                        <li key={i}>{ex}</li>
-                      ))}
-                    </ol>
-                  </p>
-                </div>
-
-                {sino && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {previewList(sino) && (
                   <div>
-                    <h4 className="font-semibold text-sm mb-0.5">Sinonim:</h4>
-                    <p className="text-gray-700 text-sm">{sino.map(s=><span key={s}>{s}, </span>)}</p>
+                    <h4 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-1.5">Sinonim</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {previewList(sino)!.map(s => (
+                        <span key={s} className="px-2.5 py-0.5 rounded-full bg-blueht-soft text-blueht text-xs">{s}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
-
-                {kont && (
+                {previewList(kont) && (
                   <div>
-                    <h4 className="font-semibold text-sm mb-0.5">Antonim:</h4>
-                    <p className="text-gray-700 text-sm">{kont.map(k=><span key={k}>{k}, </span>)}</p>
+                    <h4 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-1.5">Antonim</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {previewList(kont)!.map(k => (
+                        <span key={k} className="px-2.5 py-0.5 rounded-full bg-redht-soft text-redht text-xs">{k}</span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
+
+              {etymology && (
+                <div className="bg-white border border-mist rounded-xl p-3">
+                  <h4 className="text-xs uppercase tracking-widest text-ink-soft font-semibold mb-1">Etimoloji</h4>
+                  <p className="text-sm text-ink-soft">{etymology}</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <button 
-                onClick={handleEdit}
-                className="flex-1 bg-white text-black border-2 border-black hover:bg-gray-100 py-2 text-sm transition-colors duration-200"
+              <button
+                onClick={() => setShowPreview(false)}
+                className="flex-1 bg-white text-ink border border-mist hover:border-blueht hover:text-blueht py-2.5 rounded-full text-sm font-medium transition-colors"
               >
-                Modifye
+                ← Modifye
               </button>
-              <button 
-                onClick={HandleSubmit}
-                className="flex-1 bg-black text-white hover:bg-gray-800 py-2 text-sm transition-colors duration-200"
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className="flex-1 bg-blueht text-white hover:bg-blueht-deep py-2.5 rounded-full text-sm font-medium transition-colors disabled:opacity-60"
               >
-                Konfime epi Ajoute
+                {saving ? 'Anrejistreman…' : isAdmin ? 'Konfime epi pibliye' : 'Konfime epi soumèt'}
               </button>
             </div>
           </div>

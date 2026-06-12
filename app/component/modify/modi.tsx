@@ -1,408 +1,201 @@
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../db";
+import { WordRow, NATURE_OPTIONS, toList, fromList, linesToList, listToLines } from "../wordUtils";
 
 type ModiProps = {
-  mo: string
-  de: string
-  si: string[]
-  ant: string[]
-  di: number
-  et: string
-  ex: string[]
-  na: string
-  ap: string
+  entry: WordRow
   onDelete?: () => void
+  onSaved?: () => void
 }
 
-export default function Modi({mo, de, si, ant, di, et, ex, na, ap, onDelete}: ModiProps){
-   const [word, setWord]=useState("")
-   const [def, setDef] = useState("")
-   const [sino, setSino] = useState<string[]>([])
-   const [kont, setKont] = useState<string[]>([])
-   const [etymology, setEtimology] = useState("")
-   const [exemple, setExemple] = useState<string[]>([])
-   const [nature, setNature] = useState("")
-   const [api, setApi] = useState("")
-   const [saved, setSaved] = useState(false)
-   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-   const [showPreview, setShowPreview] = useState(false)
-   const [deleteSuccess, setDeleteSuccess] = useState(false)
-   const [deleteError, setDeleteError] = useState(false)
-   const [isAdmin, setIsAdmin] = useState(false)
-   
-   useEffect(()=>{
-    setWord(mo)
-    setDef(de)
-    setSino(si)
-    setKont(ant)
-    setEtimology(et)
-    setExemple(ex)
-    setNature(na)
-    setApi(ap)
+const inputCls =
+  "w-full px-3 py-2 bg-white border border-mist rounded-lg text-sm focus:outline-none focus:border-blueht focus:ring-2 focus:ring-blueht/15 transition-all";
+const labelCls = "block text-xs font-semibold mb-1";
+
+export default function Modi({ entry, onDelete, onSaved }: ModiProps) {
+  const [word, setWord] = useState("")
+  const [nature, setNature] = useState("")
+  const [def, setDef] = useState("")
+  const [api, setApi] = useState("")
+  const [sino, setSino] = useState("")
+  const [kont, setKont] = useState("")
+  const [exemple, setExemple] = useState("")
+  const [etymology, setEtymology] = useState("")
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    setWord(entry.word)
+    setNature(entry.nature ?? "")
+    setDef(entry.def ?? "")
+    setApi(entry.api ?? "")
+    setSino(fromList(entry.sino))
+    setKont(fromList(entry.kont))
+    setExemple(listToLines(entry.exemple))
+    setEtymology(entry.etymology ?? "")
+
+    const checkAdminStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: adminData } = await supabase
+          .from('admin_users')
+          .select('*')
+          .eq('email', user.email)
+          .single()
+        setIsAdmin(!!adminData)
+      }
+    }
     checkAdminStatus()
-   },[mo])
+  }, [entry])
 
-   const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      const { data: adminData } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('email', user.email)
-        .single()
-      
-      setIsAdmin(!!adminData)
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSaving(true)
+    const { error } = await supabase
+      .from('words')
+      .update({
+        word: word.trim(),
+        def: def.trim(),
+        nature: nature || null,
+        api: api.trim() || null,
+        sino: toList(sino),
+        kont: toList(kont),
+        exemple: linesToList(exemple),
+        etymology: etymology.trim() || null,
+      })
+      .eq('id', entry.id)
+    setSaving(false)
+    if (error) console.error(error)
+    else {
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+      if (onSaved) onSaved()
     }
   }
 
-  // for handle synonime
-   const handleListSynonym = (index: number, field: string, value: string) => {
-    const newRows = [...sino]
-    newRows[index] = value 
-    setSino(newRows)
-
-  }
-  const addRow = () => {
-    setSino([...sino, ''])
-  }
-  const removeRow = (index: number) => {
-    if (sino.length > 1) {
-      setSino(sino.filter((_, i) => i !== index))
-    }
-  }
-   // for handle antonim
-   const handleListKont = (index: number, field: string, value: string) => {
-    const newRows = [...kont]
-    newRows[index] = value 
-    setKont(newRows)
-
-  }
-  const addkont = () => {
-    setKont([...kont, ''])
-  }
-  const removeKont = (index: number) => {
-    if (kont.length > 1) {
-      setKont(kont.filter((_, i) => i !== index))
+  const handleDelete = async () => {
+    const { error } = await supabase.from('words').delete().eq('id', entry.id)
+    if (error) {
+      console.error('Delete error:', error)
+      setDeleteError(true)
+      setShowDeleteConfirm(false)
+      setTimeout(() => setDeleteError(false), 3000)
+    } else {
+      setShowDeleteConfirm(false)
+      if (onDelete) onDelete()
     }
   }
 
-  // for handle exenple
-   const handleListExemple = (index: number, field: string, value: string) => {
-    const newRows = [...exemple]
-    newRows[index] = value 
-    setExemple(newRows)
+  return (
+    <div className="space-y-3">
+      {saved && (
+        <div className="p-2.5 rounded-lg bg-blueht text-white text-center text-sm">
+          Chanjman yo anrejistre!
+        </div>
+      )}
+      {deleteError && (
+        <div className="p-2.5 rounded-lg bg-redht text-white text-center text-sm">
+          Erè! Mo a pa t ka efase.
+        </div>
+      )}
 
-  }
-  const addExemple = () => {
-    setExemple([...exemple, ''])
-  }
-  const removeExemple = (index: number) => {
-    if (exemple.length > 1) {
-      setExemple(exemple.filter((_, i) => i !== index))
-    }
-  }
+      <form onSubmit={handleSave} className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Mo</label>
+            <input type="text" value={word} className={`${inputCls} font-display`} onChange={(e) => setWord(e.target.value)} required />
+          </div>
+          <div>
+            <label className={labelCls}>Nati</label>
+            <select value={nature} onChange={(e) => setNature(e.target.value)} className={inputCls}>
+              <option value="">Chwazi…</option>
+              {NATURE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-   const handlePreview = (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      setShowPreview(true)
-   }
+        <div>
+          <label className={labelCls}>Definisyon</label>
+          <textarea value={def} onChange={(e) => setDef(e.target.value)} rows={3} className={`${inputCls} resize-none`} required />
+        </div>
 
-   const handleEdit = () => {
-      setShowPreview(false)
-   }
+        <div>
+          <label className={labelCls}>Egzanp (yon fraz pa liy)</label>
+          <textarea value={exemple} onChange={(e) => setExemple(e.target.value)} rows={3} className={`${inputCls} resize-none`} />
+        </div>
 
-   const dab = async ()=>{
-      const { error } = await supabase.from('words').update({word, def,sino,kont,etymology,exemple,nature,api}).eq('id',di).select("*")
-      if (error) console.error(error) 
-      else {
-        setSaved(true)
-        setShowPreview(false)
-        setTimeout(() => setSaved(false), 2000)
-      }
-   }
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Sinonim (separe ak vigil)</label>
+            <textarea value={sino} rows={2} className={`${inputCls} resize-none`} onChange={(e) => setSino(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Antonim (separe ak vigil)</label>
+            <textarea value={kont} rows={2} className={`${inputCls} resize-none`} onChange={(e) => setKont(e.target.value)} />
+          </div>
+        </div>
 
-   const handleDelete = async () => {
-      console.log('Attempting to delete word with ID:', di)
-      const { data, error } = await supabase.from('words').delete().eq('id', di).select()
-      
-      if (error) {
-        console.error('Delete error:', error)
-        setDeleteError(true)
-        setShowDeleteConfirm(false)
-        setTimeout(() => setDeleteError(false), 3000)
-      } else {
-        console.log('Delete successful:', data)
-        setShowDeleteConfirm(false)
-        setDeleteSuccess(true)
-        setTimeout(() => {
-          setDeleteSuccess(false)
-          if (onDelete) onDelete()
-        }, 2000)
-      }
-   }
-                
-    
-      return(
-        <div className="space-y-2">
-          {saved && (
-            <div className="p-2 bg-black text-white text-center text-sm">
-              Chanjman yo te anrejistre!
-            </div>
-          )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Pwononsyasyon (API)</label>
+            <input type="text" value={api} className={`${inputCls} font-mono`} onChange={(e) => setApi(e.target.value)} placeholder="/lɑ̃.mu/" />
+          </div>
+          <div>
+            <label className={labelCls}>Etimoloji</label>
+            <input type="text" value={etymology} className={inputCls} onChange={(e) => setEtymology(e.target.value)} />
+          </div>
+        </div>
 
-          {deleteSuccess && (
-            <div className="p-2 bg-red-600 text-white text-center text-sm">
-              Mo a te efase avèk siksè!
-            </div>
-          )}
-
-          {deleteError && (
-            <div className="p-2 bg-red-600 text-white text-center text-sm">
-              Erè! Mo a pa te ka efase. Gade konsol la pou plis detay.
-            </div>
-          )}
-          
-          {!showPreview ? (
-            <form onSubmit={handlePreview} className="space-y-2">
-              <div>
-                <label className="block text-sm font-semibold mb-1">Mo</label>
-                <input 
-                  type="text" 
-                  value={word} 
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm" 
-                  placeholder="mo" 
-                  onChange={(e)=>setWord(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-1">Etimoloji</label>
-                <textarea  
-                  value={etymology} 
-                  onChange={(e)=>setEtimology(e.target.value)} 
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm" 
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold mb-1">Definisyon</label>
-                <textarea  
-                  value={def} 
-                  onChange={(e)=>setDef(e.target.value)} 
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black resize-none text-sm" 
-                />
-              </div>
-
-              {/* sinonim section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Sinonim {sino.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addRow}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 mb-2 text-sm transition-colors duration-200"
-                  >
-                    Ajoute Sinonim
-                  </button>
-                </div>
-                {sino.map((syn, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {sino.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeRow(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Sinonim</label>
-                    <input
-                      type="text"
-                      placeholder="Sinonim"
-                      value={syn}
-                      onChange={(e) => handleListSynonym(index, 'sino', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-              
-              {/* antonim section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Antonim {kont.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addkont}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
-                  >
-                    Ajoute Antonim
-                  </button>
-                </div>
-                {kont.map((ant, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {kont.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeKont(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Antonim</label>
-                    <input
-                      type="text"
-                      placeholder="Antonim"
-                      value={ant}
-                      onChange={(e) => handleListKont(index, 'kont', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* exemple section */}
-              <div>
-                <div>
-                  <label className="font-semibold mb-1 mr-5">Examp {kont.length}</label>
-                  <button 
-                    type="button" 
-                    onClick={addExemple}
-                    className="bg-black text-white hover:bg-gray-800 px-4 py-1 text-sm transition-colors duration-200 mb-2"
-                  >
-                    Ajoute Examp
-                  </button>
-                </div>
-                {exemple.map((ex, index) => (
-                  <div key={index} className="flex items-center gap-2 mb-2">
-                    <div>
-                      {exemple.length > 1 && (
-                        <button 
-                          type="button"
-                          onClick={() => removeExemple(index)}
-                          className="ml-auto px-2 py-1 text-red-600 hover:bg-red-100 rounded transition-all"
-                        >
-                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </button>
-                      )}
-                    </div>
-                    <label className="block text-sm font-semibold mb-1">Examp</label>
-                    <input
-                      type="text"
-                      placeholder="Examp"
-                      value={ex}
-                      onChange={(e) => handleListExemple(index, 'exemple', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-1.5">
-                <button 
-                  type="submit"
-                  className="flex-1 bg-black text-white hover:bg-gray-800 py-2 text-sm transition-colors duration-200"
-                >
-                  Revize
-                </button>
-                
-                {isAdmin && (
-                  <button 
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    className="flex-1 bg-white text-black border border-black hover:bg-red-600 hover:text-white hover:border-red-600 py-2 text-sm transition-colors duration-200"
-                  >
-                    Efase
-                  </button>
-                )}
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-2">
-              <div className="bg-gray-50 border-2 border-black p-2 sm:p-3">
-                <h3 className="text-sm font-bold mb-2 border-b-2 border-black pb-1">Revizyon</h3>
-                
-                <div className="space-y-1.5">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-0.5">Mo:</h4>
-                    <p className="text-gray-700 text-sm">{word}</p>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold text-sm mb-0.5">Definisyon:</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed">{def}</p>
-                  </div>
-
-                  {sino && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-0.5">Sinonim:</h4>
-                      <p className="text-gray-700 text-sm">{sino}</p>
-                    </div>
-                  )}
-
-                  {kont && (
-                    <div>
-                      <h4 className="font-semibold text-sm mb-0.5">Antonim:</h4>
-                      <p className="text-gray-700 text-sm">{kont}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-1.5">
-                <button 
-                  onClick={handleEdit}
-                  className="flex-1 bg-white text-black border-2 border-black hover:bg-gray-100 py-2 text-sm transition-colors duration-200"
-                >
-                  Modifye
-                </button>
-                <button 
-                  onClick={dab}
-                  className="flex-1 bg-black text-white hover:bg-gray-800 py-2 text-sm transition-colors duration-200"
-                >
-                  Konfime
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Delete Confirmation Modal */}
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-              <div className="bg-white border-2 border-black p-4 sm:p-5 md:p-6 max-w-[90%] sm:max-w-md w-full">
-                <h3 className="text-base sm:text-lg md:text-xl font-bold mb-3 sm:mb-4">Konfime Efasman</h3>
-                <p className="mb-4 sm:mb-5 text-xs sm:text-sm md:text-base">Èske ou sèten ou vle efase mo &ldquo;{word}&rdquo;? Aksyon sa a pa ka defèt.</p>
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                  <button
-                    onClick={handleDelete}
-                    className="flex-1 bg-red-600 text-white hover:bg-red-700 py-2 sm:py-2.5 text-sm sm:text-base transition-colors duration-200"
-                  >
-                    Wi, Efase
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="flex-1 bg-white border-2 border-black hover:bg-gray-100 py-2 sm:py-2.5 text-sm sm:text-base transition-colors duration-200"
-                  >
-                    Anile
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex-1 bg-blueht text-white hover:bg-blueht-deep py-2 rounded-full text-sm font-medium transition-colors disabled:opacity-60"
+          >
+            {saving ? 'Anrejistreman…' : 'Anrejistre chanjman yo'}
+          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex-1 bg-white text-redht border border-redht hover:bg-redht hover:text-white py-2 rounded-full text-sm font-medium transition-colors"
+            >
+              Efase mo a
+            </button>
           )}
         </div>
-      )
+      </form>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl border border-mist shadow-xl p-6 max-w-md w-full">
+            <h3 className="font-display text-xl font-bold mb-3">Konfime efasman</h3>
+            <p className="mb-5 text-sm text-ink-soft">
+              Èske ou sèten ou vle efase mo « {word} » ? Aksyon sa a pa ka defèt.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={handleDelete}
+                className="flex-1 bg-redht text-white hover:bg-[#a90d2a] py-2.5 rounded-full text-sm font-medium transition-colors"
+              >
+                Wi, efase
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 bg-white border border-mist hover:border-blueht py-2.5 rounded-full text-sm font-medium transition-colors"
+              >
+                Anile
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
